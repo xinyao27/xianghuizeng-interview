@@ -6,23 +6,31 @@ import { Button } from '@/components/ui/button';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarHeader,
 } from '@/components/ui/sidebar';
+import { useAppProvider } from '@/hooks/useAppProvider';
 import { SidebarProps } from '@/types';
 
 export function AppSidebar({ openSidebar, onOpenChangeSidebar }: SidebarProps) {
   const [historyList, setHistoryList] = useState<string[]>([]);
+  const { setConversation } = useAppProvider();
+
   const getHistoryList = () => {
     setHistoryList([]);
   };
+
+  const handleNewChat = () => {
+    setConversation('');
+  };
+
   useEffect(() => {
     getHistoryList();
   }, []);
+
   return (
     <Sidebar>
-      <SidebarHeader>
+      <SidebarHeader className='p-3'>
         <div className="flex justify-between items-center">
           <span>AI-Chat</span>
           {openSidebar ? (
@@ -33,12 +41,19 @@ export function AppSidebar({ openSidebar, onOpenChangeSidebar }: SidebarProps) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup />
-        {historyList.map((item, index) => (
-          <div key={index}>{item}</div>
-        ))}
+        <SidebarGroup >
+          <div className='flex justify-center'>
+            <Button className='w-full' variant="outline" size="sm" onClick={handleNewChat}>
+              New Chat
+            </Button>
+          </div>
+        </SidebarGroup>
+        <SidebarGroup >
+          {historyList.map((item, index) => (
+            <div key={index}>{item}</div>
+          ))}
+        </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
     </Sidebar>
   );
 }
