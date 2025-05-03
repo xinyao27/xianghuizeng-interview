@@ -1,0 +1,24 @@
+# 构建产物
+.next/
+out/
+build/
+dist/
+
+# 依赖目录
+node_modules/
+
+# 缓存目录
+.cache/
+.eslintcache
+
+# 配置文件
+next.config.js
+postcss.config.js
+tailwind.config.ts
+.prettierrc
+.eslintrc.json
+
+# 其他文件
+*.d.ts
+public/
+**/*.min.js 
