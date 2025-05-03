@@ -18,6 +18,35 @@ const config: Config = {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+      keyframes: {
+        typewriter: {
+          '0%': { 
+            maxWidth: '0%',
+            opacity: '0.7'
+          },
+          '5%': {
+            maxWidth: '5%', 
+          },
+          '10%': {
+            maxWidth: '10%',
+          },
+          '20%': { 
+            maxWidth: '20%',
+            opacity: '0.8'
+          },
+          '40%': { 
+            maxWidth: '40%',
+            opacity: '0.9'
+          },
+          '100%': { 
+            maxWidth: '100%',
+            opacity: '1'
+          }
+        }
+      },
+      animation: {
+        typewriter: 'typewriter 1.5s ease-out forwards'
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
