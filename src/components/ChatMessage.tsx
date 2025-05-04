@@ -80,7 +80,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
     );
   }
   const processMarkdown = (text: string) => {
-    return text.replace(/\\n/g, `  \n  `);
+    return text.replace(/\\n/g, `  \n  `).replace(/\\/g, `  `);
   };
   // AI message - left aligned with Bot icon, no background
   return (
