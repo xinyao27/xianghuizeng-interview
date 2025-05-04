@@ -143,7 +143,7 @@ async function handleRequest(c: any, method: string) {
             // 调用AI模型获取流式响应
             const userMessage: Message = {
               role: 'user',
-              content: contentParts
+              content: contentParts as unknown
             };
 
             const modelStream = await streamText({
