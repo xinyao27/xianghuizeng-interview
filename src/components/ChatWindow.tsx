@@ -82,7 +82,7 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
   const hasMessages = displayMessages.length > 0;
 
   return (
-    <div className={cn("flex flex-col gap-4 p-4", { 'pb-16': !hasMessages })}>
+    <div className={cn("flex flex-col gap-4 h-full items-center", { 'pb-16': !hasMessages })}>
       {!hasMessages && isWaitingForResponse && (
         <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
           <div className="text-center space-y-2">
@@ -91,8 +91,8 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
         </div>
       )}
       {hasMessages ? (
-        <ScrollArea className="flex-1 w-[800px] mx-auto h-[calc(100vh-180px)]">
-          <div className="flex flex-col gap-4">
+        <ScrollArea className="flex-1 w-[800px] mx-auto p-4">
+          <div className="flex flex-col gap-4 p-4">
             {displayMessages.map((message, index) => (
               <ChatMessage
                 key={index}

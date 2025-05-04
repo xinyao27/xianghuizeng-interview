@@ -84,7 +84,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
   };
   // AI message - left aligned with Bot icon, no background
   return (
-    <div className="flex gap-3 p-4 w-full w-[800px] mx-auto">
+    <div className="flex gap-3 p-4 w-full w-[760px] mx-auto">
       <div className="h-8 w-8 shrink-0 mt-1 rounded-full bg-blue-500 text-white flex items-center justify-center">
         <Bot size={16} />
       </div>
@@ -155,7 +155,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
             aria-label="Copy message"
           >
             <Copy size={12} className={cn(isCopied ? "text-green-500" : "")} />
-            <span>{isCopied ? "已复制" : "复制"}</span>
+            <span>{isCopied ? "Copied" : "Copy"}</span>
           </button>
         </div>
       </div>
