@@ -1,10 +1,15 @@
-import { LanguageModelV1, Message, streamText } from 'ai';
+import { LanguageModelV1, streamText } from 'ai';
 import { Hono } from 'hono';
 import { createQwen } from 'qwen-ai-provider';
 
 import { db } from '@/db/drizzle';
 import { createMessage, createTopic, getTopicById } from '@/db/operations';
 import type { MessageRole } from '@/db/schema';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 // 初始化Qwen模型
 const qwen = createQwen({
@@ -143,7 +148,12 @@ async function handleRequest(c: any, method: string) {
             // 调用AI模型获取流式响应
             const userMessage: Message = {
               role: 'user',
-              content: contentParts as unknown
+              content: contentParts.map(part => {
+                if (part.type === 'text') {
+                  return part.text || '';
+                }
+                return '';
+              }).join('')
             };
 
             const modelStream = await streamText({
