@@ -241,48 +241,8 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
       formData.append('topicId', conversationId);
     }
 
-    // 直接保存用户消息到数据库
-    if (topicId && user?.id) {
-      try {
-        // 如果有图片，创建包含图片信息的元数据
-        let messageMetadata = undefined;
-        if (imagePreview) {
-          messageMetadata = JSON.stringify({
-            hasImage: true,
-            imageType: selectedImage?.type || 'image/jpeg',
-            imagePreview: imagePreview.substring(0, 100) + '...' // 存储图片预览的截断版本
-          });
-        }
-
-        const messageResponse = await fetch('/api/chat-message', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            topicId,
-            content: input,
-            role: 'user',
-            userId: user.id,
-            metadata: messageMetadata,
-            created_at: new Date().toISOString()
-          }),
-        });
-
-        if (messageResponse.ok) {
-          const savedMessage = await messageResponse.json();
-          // 更新消息ID为数据库中的ID
-          userMessage.id = savedMessage.id;
-          // 更新formData中的messageId
-          formData.set('messageId', savedMessage.id);
-        } else {
-          console.error('Failed to save user message to database');
-        }
-      } catch (error) {
-        console.error('Error saving user message:', error);
-        // 即使保存失败，也继续执行
-      }
-    }
+    // 如果有topicId，直接将其传递给agent接口，不需要在这里保存用户消息
+    // 因为agent接口会处理消息的保存
 
     // Add speed parameter
     formData.append('speed', typingSpeed);
@@ -355,6 +315,16 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
 
                 // Also update old conversation string
                 setConversation(`${newConversation}\nAI: ${accumulatedResponse}`);
+              } else if (data.messageId) {
+                // 接收到消息ID的情况，更新UI中的消息ID
+                setMessages((prevMessages: Message[]) => {
+                  return prevMessages.map(msg => {
+                    if (msg.isUser === false && msg.content === accumulatedResponse) {
+                      return { ...msg, id: data.messageId };
+                    }
+                    return msg;
+                  });
+                });
               }
             } catch (error) {
               console.error('Error parsing SSE message:', error);
@@ -362,73 +332,6 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
           } else if (line.startsWith('event: end')) {
             // End event received
             done = true;
-
-            // 当AI响应完成后，将完整响应保存到数据库
-            if (topicId && user?.id && userMessage.id) {
-              try {
-                // 使用延迟保存AI消息，确保响应已完整接收
-                setTimeout(async () => {
-                  try {
-                    console.log('[saveAIMessage] Saving AI response:', {
-                      topicId,
-                      contentLength: accumulatedResponse.length
-                    });
-
-                    const aiMessageResponse = await fetch('/api/chat-message', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        topicId,
-                        content: accumulatedResponse,
-                        role: 'assistant',
-                        userId: user.id,
-                        created_at: new Date().toISOString()
-                      }),
-                    });
-
-                    if (!aiMessageResponse.ok) {
-                      const errorData = await aiMessageResponse.json().catch(() => ({}));
-                      console.error('[saveAIMessage] Failed to save AI message:', {
-                        status: aiMessageResponse.status,
-                        statusText: aiMessageResponse.statusText,
-                        error: errorData.error || 'Unknown error'
-                      });
-                      throw new Error(`Failed to save AI message: ${aiMessageResponse.statusText}`);
-                    }
-
-                    const savedAiMessage = await aiMessageResponse.json();
-                    console.log('[saveAIMessage] AI message saved successfully:', {
-                      messageId: savedAiMessage.id,
-                      topicId: savedAiMessage.topic_id
-                    });
-
-                    // 更新UI中AI消息的ID
-                    setMessages((prevMessages: Message[]) => {
-                      return prevMessages.map(msg => {
-                        if (msg.isUser === false && msg.content === accumulatedResponse) {
-                          return { ...msg, id: savedAiMessage.id };
-                        }
-                        return msg;
-                      });
-                    });
-                  } catch (error) {
-                    console.error('[saveAIMessage] Error in save operation:', error);
-                    // 可以在这里添加用户提示或重试逻辑
-                  }
-                }, 100);
-              } catch (error) {
-                console.error('[saveAIMessage] Outer error:', error);
-              }
-            } else {
-              console.error('[saveAIMessage] Missing required data:', {
-                hasTopicId: !!topicId,
-                hasUserId: !!user?.id,
-                hasUserMessageId: !!userMessage.id
-              });
-            }
-
             break;
           }
         }

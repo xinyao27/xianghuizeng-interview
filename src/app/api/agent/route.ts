@@ -112,11 +112,26 @@ async function handleRequest(c: any, method: string) {
 
         // 只有在有效的topicId时才保存用户消息
         if (topicId) {
+          // 处理图片元数据
+          let metadata = undefined;
+          if (image) {
+            try {
+              metadata = JSON.stringify({
+                hasImage: true,
+                imageType: image.type || 'image/jpeg',
+                imagePreview: 'Image was uploaded' // 简单标记图片存在
+              });
+            } catch (error) {
+              console.error('Error creating image metadata:', error);
+            }
+          }
+
           const savedMessage = await createMessage({
             topicId,
             role: 'user' as MessageRole,
             content: message,
             userId,
+            metadata,
             created_at: new Date().toISOString()
           });
           console.log(`User message saved with ID: ${savedMessage?.id}`);
