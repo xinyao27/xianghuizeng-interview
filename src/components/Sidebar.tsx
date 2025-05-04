@@ -1,6 +1,6 @@
 'use client';
 import { Edit, PanelLeft, Plus, Trash2 } from 'lucide-react';
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useState } from 'react';
 
 
@@ -47,7 +47,7 @@ interface ConversationsResponse {
 }
 
 export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: SidebarProps) {
-  const router = useRouter(); // 新增: 获取 router 实例
+  const router = useRouter();
   const { user } = useUser();
   const storageKey = user ? `user_${user.id}_` : 'user_';
   const [mounted, setMounted] = useState(false);
@@ -65,6 +65,8 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string>('');
   const [currentConversation, setCurrentConversation] = useState<ConversationItem | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const { setMessages, setConversation } = useAppProvider();
@@ -171,10 +173,19 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
 
   const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
     event.stopPropagation();
-    if (!user || !confirm('Are you sure you want to delete this conversation?')) return;
+    if (!user) return;
+
+    // 打开删除确认对话框
+    setConversationToDelete(conversationId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // 确认删除会话的函数
+  const confirmDelete = async () => {
+    if (!user || !conversationToDelete) return;
 
     try {
-      const response = await fetch(`/api/conversations?topicId=${conversationId}&userId=${user.id}`, {
+      const response = await fetch(`/api/conversations?topicId=${conversationToDelete}&userId=${user.id}`, {
         method: 'DELETE',
       });
 
@@ -183,16 +194,20 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
       }
 
       // Update the list, remove the deleted conversation
-      setConversationList(prev => prev.filter(c => c.id !== conversationId));
+      setConversationList(prev => prev.filter(c => c.id !== conversationToDelete));
 
       // If currently viewing this conversation, clear it
-      if (currentConversation?.id === conversationId) {
+      if (currentConversation?.id === conversationToDelete) {
         setMessages([]);
         setConversation('');
         setCurrentConversation(null);
       }
     } catch (error) {
       console.error('Failed to delete conversation:', error);
+    } finally {
+      // 关闭删除确认对话框
+      setIsDeleteDialogOpen(false);
+      setConversationToDelete('');
     }
   };
 
@@ -438,6 +453,32 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
               className="bg-primary/90 hover:bg-primary"
             >
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Conversation</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>Are you sure you want to delete this conversation? This action cannot be undone.</p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+            >
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
