@@ -192,7 +192,7 @@ async function handleRequest(c: any, method: string) {
                   fullResponse += content;
 
                   // 构造SSE消息格式
-                  const data = `data: ${JSON.stringify({ text: content })}\n\n`;
+                  const data = `data: ${JSON.stringify({ text: content })}`;
                   controller.enqueue(new TextEncoder().encode(data));
 
                   // 根据速度参数调整延迟时间
@@ -210,7 +210,7 @@ async function handleRequest(c: any, method: string) {
               } else if (!text.startsWith('e:') && !text.startsWith('d:')) {
                 // 如果不是元数据且格式不是预期的，直接发送
                 fullResponse += text;
-                const data = `data: ${JSON.stringify({ text })}\n\n`;
+                const data = `data: ${JSON.stringify({ text })}`;
                 controller.enqueue(new TextEncoder().encode(data));
 
                 // 这里也添加延迟
@@ -244,7 +244,7 @@ async function handleRequest(c: any, method: string) {
 
                   // 发送AI消息ID
                   if (savedAiMessage?.id) {
-                    controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ messageId: savedAiMessage.id })}\n\n`));
+                    controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ messageId: savedAiMessage.id })}`));
                   }
                 } else {
                   console.log(`Not saving AI response: Topic ${topicId} invalid or doesn't belong to user ${userId}`);
@@ -255,7 +255,7 @@ async function handleRequest(c: any, method: string) {
             }
 
             // 发送结束事件
-            controller.enqueue(new TextEncoder().encode('event: end\ndata: {}\n\n'));
+            controller.enqueue(new TextEncoder().encode('event: end\ndata: {}'));
             controller.close();
           } catch (error) {
             console.error('Stream processing error:', error);

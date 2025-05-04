@@ -169,6 +169,8 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
   const handleNewChat = async () => {
     setMessages([]);
     setConversation('');
+    setCurrentConversation(null);
+    router.push('/');
   };
 
   const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {

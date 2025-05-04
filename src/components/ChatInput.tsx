@@ -75,57 +75,6 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
     }
   }, [conversationId]);
 
-  // Load conversation history if current conversation exists
-  useEffect(() => {
-    const loadConversationHistory = async () => {
-      if (currentConversation?.id && user?.id && messages.length === 0) {
-        try {
-          const response = await fetch(
-            `/api/chat-history?userId=${user.id}&topicId=${currentConversation.id}`
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
-              // 转换消息格式以适应UI
-              const formattedMessages = data.messages.map((msg: any) => ({
-                id: msg.id,
-                content: msg.content,
-                isUser: msg.role === 'user',
-                // 如果消息包含图片元数据，解析并添加imageUrl
-                imageUrl: (() => {
-                  try {
-                    const metadata = msg.metadata ? JSON.parse(msg.metadata) : null;
-                    return metadata && metadata.hasImage && metadata.imagePreview
-                      ? metadata.imagePreview.substring(0, 30) + '...'
-                      : undefined;
-                  } catch (e) {
-                    return undefined;
-                  }
-                })()
-              }));
-
-              setMessages(formattedMessages);
-
-              // 也更新传统的对话字符串格式（向后兼容）
-              const conversationText = data.messages
-                .map((msg: any) => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`)
-                .join('\n');
-
-              setConversation(conversationText);
-            }
-          } else {
-            console.error('Failed to load conversation history');
-          }
-        } catch (error) {
-          console.error('Error loading conversation history:', error);
-        }
-      }
-    };
-
-    loadConversationHistory();
-  }, [currentConversation, user, messages.length, setMessages, setConversation]);
-
   // Cleanup effect
   useEffect(() => {
     return () => {
@@ -264,6 +213,9 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
         throw new Error('Response body is null');
       }
       setInput('');
+      setIsGenerating(false);
+      setSelectedImage(null);
+      setImagePreview(null);
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulatedResponse = '';
@@ -291,7 +243,7 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
         const chunk = decoder.decode(result.value, { stream: true });
 
         // Find all SSE messages
-        const lines = chunk.split('\n\n');
+        const lines = chunk.split('\\n\\n');
         for (const line of lines) {
           if (line.startsWith('data:')) {
             try {

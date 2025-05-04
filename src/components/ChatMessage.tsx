@@ -80,11 +80,11 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
     );
   }
   const processMarkdown = (text: string) => {
-    return text.replace(/\\n/g, `  \n  `).replace(/\\/g, `  `);
+    return text.replace(/\\(?!n)/g, ` `).replace(/\\n/g, ` \n `)
   };
   // AI message - left aligned with Bot icon, no background
   return (
-    <div className="flex gap-3 p-4 w-full w-[760px] mx-auto">
+    <div className="flex gap-3 p-4 w-[760px] mx-auto">
       <div className="h-8 w-8 shrink-0 mt-1 rounded-full bg-blue-500 text-white flex items-center justify-center">
         <Bot size={16} />
       </div>
@@ -93,7 +93,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
         <div className="prose prose-sm dark:prose-invert overflow-visible">
           <div className={cn(
             isNew && "animate-typewriter origin-left",
-            "inline-block"
+            "inline-block overflow-hidden w-full"
           )}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks]}

@@ -8,6 +8,7 @@ import { useAppProvider } from '@/hooks/useAppProvider';
 import { useUser } from "@/lib/UserContext";
 import { cn } from '@/lib/utils';
 
+import Loading from './Loading';
 
 
 type ChatWindowProps = {
@@ -16,19 +17,17 @@ type ChatWindowProps = {
 
 export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
   const { user } = useUser();
-  const router = useSearchParams(); // 新增: 获取 router 实例
-  const { conversation, messages, setCurrentConversation, setMessages } = useAppProvider(); // 假设上下文支持设置方法
+  const router = useSearchParams();
+  const { conversation, messages, setCurrentConversation, setMessages } = useAppProvider();
   const scrollRef = useRef<HTMLDivElement>(null);
   const convId = router.get('convId')
 
-  // 新增: 监听 URL 中的 convId 参数
   useEffect(() => {
     if (convId && user?.id) {
       fetchConversation(convId as string, user.id);
     }
   }, [convId, user?.id]);
 
-  // 新增: 根据 convId 获取对话内容
   const fetchConversation = async (convId: string, userId: string) => {
     try {
       const response = await fetch(`/api/conversations?topicId=${convId}&userId=${userId}`);
@@ -59,14 +58,12 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
     }
   };
 
-  // Auto-scroll to bottom when conversation updates
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [conversation, messages]);
 
-  // Legacy support for string-based conversation if messages array is empty
   const legacyMessages = conversation && messages.length === 0
     ? conversation.split(/(?=User:|AI:)/)
       .filter(msg => msg.trim())
@@ -82,7 +79,7 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
   const hasMessages = displayMessages.length > 0;
 
   return (
-    <div className={cn("flex flex-col gap-4 h-full items-center", { 'pb-16': !hasMessages })}>
+    <div className={cn("flex flex-col gap-4 items-center flex-1", hasMessages ? 'h-0' : 'pb-16')}>
       {!hasMessages && isWaitingForResponse && (
         <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
           <div className="text-center space-y-2">
@@ -91,7 +88,7 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
         </div>
       )}
       {hasMessages ? (
-        <ScrollArea className="flex-1 w-[800px] mx-auto p-4">
+        <ScrollArea className="flex-1 w-[800px] mx-auto p-4 h-0">
           <div className="flex flex-col gap-4 p-4">
             {displayMessages.map((message, index) => (
               <ChatMessage
@@ -103,9 +100,7 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
             ))}
             {isWaitingForResponse && (
               <div className="flex justify-center py-4">
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl">...</h3>
-                </div>
+                <Loading />
               </div>
             )}
             <div ref={scrollRef} />

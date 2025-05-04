@@ -1,5 +1,6 @@
 'use client';
 import { Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -11,9 +12,10 @@ import { useUser } from '@/lib/UserContext';
 import { SidebarProps } from '@/types';
 
 export function Navber({ openSidebar }: SidebarProps) {
+  const router = useRouter();
   const { user } = useUser();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { setMessages, setConversation } = useAppProvider();
+  const { setMessages, setConversation, setCurrentConversation } = useAppProvider();
   const handleAvatarClick = () => {
     setDialogOpen(true);
   };
@@ -21,10 +23,12 @@ export function Navber({ openSidebar }: SidebarProps) {
   const handleNewChat = () => {
     setMessages([]);
     setConversation('');
+    setCurrentConversation(null)
+    router.push('/');
   };
 
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between p-3 border-b">
       <div className="flex items-center gap-2">
         {!openSidebar && (
           <>
@@ -40,7 +44,7 @@ export function Navber({ openSidebar }: SidebarProps) {
         {user ? (
           <Avatar
             onClick={handleAvatarClick}
-            className="cursor-pointer hover:opacity-80"
+            className="cursor-pointer hover:opacity-80 w-[32px] h-[32px]"
             title={user.username}
           >
             <AvatarFallback>{user.username.slice(0, 1).toUpperCase()}</AvatarFallback>
