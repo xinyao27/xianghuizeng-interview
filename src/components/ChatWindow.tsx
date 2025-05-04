@@ -1,23 +1,68 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import {useEffect, useRef} from 'react';
 
-import { ChatMessage } from '@/components/ChatMessage';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAppProvider } from '@/hooks/useAppProvider';
-import { cn } from '@/lib/utils';
+import {ChatMessage} from '@/components/ChatMessage';
+import {ScrollArea} from '@/components/ui/scroll-area';
+import {useAppProvider} from '@/hooks/useAppProvider';
+import {cn} from '@/lib/utils';
+
+import {useSearchParams} from 'next/navigation';
+
+import {useUser} from "@/lib/UserContext";
 
 type ChatWindowProps = {
   isWaitingForResponse: boolean;
 }
 
-export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
-  const { conversation, messages } = useAppProvider();
+export function ChatWindow({isWaitingForResponse}: ChatWindowProps) {
+  const {user} = useUser();
+  const router = useSearchParams(); // 新增: 获取 router 实例
+  const {conversation, messages, setCurrentConversation, setMessages} = useAppProvider(); // 假设上下文支持设置方法
   const scrollRef = useRef<HTMLDivElement>(null);
+  const convId = router.get('convId')
+
+  // 新增: 监听 URL 中的 convId 参数
+  useEffect(() => {
+    if (convId && user?.id) {
+      fetchConversation(convId as string, user.id);
+    }
+  }, [convId, user?.id]);
+
+  // 新增: 根据 convId 获取对话内容
+  const fetchConversation = async (convId: string, userId: string) => {
+    try {
+      const response = await fetch(`/api/conversations?topicId=${convId}&userId=${userId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversation');
+      }
+
+      const data = await response.json();
+      if (data.topic) {
+        setCurrentConversation(data.topic);
+      }
+
+      const historyResponse = await fetch(`/api/chat-history?topicId=${convId}&userId=${userId}`);
+      if (!historyResponse.ok) {
+        throw new Error('Failed to fetch chat history');
+      }
+
+      const historyData = await historyResponse.json();
+      const formattedMessages = historyData.messages.map((msg: any) => ({
+        id: msg.id,
+        content: msg.content,
+        isUser: msg.role === 'user',
+      }));
+
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+    }
+  };
 
   // Auto-scroll to bottom when conversation updates
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+      scrollRef.current.scrollIntoView({behavior: 'smooth'});
     }
   }, [conversation, messages]);
 
@@ -28,7 +73,7 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
       .map(msg => {
         const isUser = msg.startsWith('User:');
         const content = msg.replace(/^(User:|AI:)/, '').trim();
-        return { isUser, content, imageUrl: undefined };
+        return {isUser, content, imageUrl: undefined};
       })
     : [];
 
@@ -37,7 +82,7 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
   const hasMessages = displayMessages.length > 0;
 
   return (
-    <div className={cn("flex flex-col gap-4 p-4", { 'pb-16': !hasMessages })}>
+    <div className={cn("flex flex-col gap-4 p-4", {'pb-16': !hasMessages})}>
       {!hasMessages && isWaitingForResponse && (
         <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
           <div className="text-center space-y-2">
@@ -63,7 +108,7 @@ export function ChatWindow({ isWaitingForResponse }: ChatWindowProps) {
                 </div>
               </div>
             )}
-            <div ref={scrollRef} />
+            <div ref={scrollRef}/>
           </div>
         </ScrollArea>
       ) : (

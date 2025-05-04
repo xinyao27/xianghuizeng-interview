@@ -39,12 +39,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -55,19 +49,6 @@
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "chat_history_parent_id_chat_history_id_fk": {
-          "name": "chat_history_parent_id_chat_history_id_fk",
-          "tableFrom": "chat_history",
-          "tableTo": "chat_history",
-          "columnsFrom": [
-            "parent_id"
           ],
           "columnsTo": [
             "id"

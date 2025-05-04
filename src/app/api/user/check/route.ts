@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getUserByUsername } from '@/db/operations';
+import { searchUsers } from '@/db/operations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,9 +14,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const existingUser = await getUserByUsername(username);
+    const matchingUsers = await searchUsers(username);
+    const exists = matchingUsers.some(user => user.username === username);
 
-    return NextResponse.json({ exists: !!existingUser });
+    return NextResponse.json({ exists });
   } catch (error) {
     console.error('Error checking username:', error);
     return NextResponse.json(

@@ -4,6 +4,7 @@ import { Bot, ZoomIn } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 
 import { cn } from '@/lib/utils';
@@ -57,7 +58,9 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
       </div>
     );
   }
-
+  const processMarkdown = (text: string) => {
+    return text.replace(/\\n/g, `  \n  `);
+  };
   // AI message - left aligned with Bot icon, no background
   return (
     <div className="flex gap-3 p-4 w-full w-[800px] mx-auto">
@@ -72,7 +75,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
             "inline-block"
           )}>
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfm, remarkBreaks]}
               components={{
                 pre: ({ ...props }) => (
                   <div className="overflow-auto rounded-lg bg-black/10 dark:bg-white/10 p-4 my-2">
@@ -118,7 +121,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
                 ),
               }}
             >
-              {content}
+              {processMarkdown(content)}
             </ReactMarkdown>
           </div>
         </div>

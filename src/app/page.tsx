@@ -9,9 +9,19 @@ import { AppProvider } from '@/lib/AppProvider';
 import { UserProvider } from '@/lib/UserContext';
 
 export default function Home() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedState = localStorage.getItem('sidebarOpen');
+      return savedState ? JSON.parse(savedState) : false;
+    }
+    return false;
+  });
+
   const onOpenChange = (open: boolean) => {
     setOpen(open);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarOpen', JSON.stringify(open));
+    }
   };
   return (
     <UserProvider>

@@ -3,7 +3,8 @@ import { Hono } from 'hono';
 import { createQwen } from 'qwen-ai-provider';
 
 import { db } from '@/db/drizzle';
-import { createChatMessage } from '@/db/operations';
+import { createMessage, createTopic, getTopicById } from '@/db/operations';
+import type { MessageRole } from '@/db/schema';
 
 // 初始化Qwen模型
 const qwen = createQwen({
@@ -32,7 +33,7 @@ async function handleRequest(c: any, method: string) {
     let message: string;
     let image: File | null = null;
     let userId: string | undefined;
-    let conversationId: string | undefined;
+    let topicId: string | undefined;
     let speed: 'normal' | 'fast' | 'slow' = 'normal';
 
     // 根据请求方法获取参数
@@ -40,7 +41,7 @@ async function handleRequest(c: any, method: string) {
       // 从URL查询参数获取数据
       message = c.req.query('message') || '';
       userId = c.req.query('userId');
-      conversationId = c.req.query('conversationId');
+      topicId = c.req.query('topicId');
       speed = (c.req.query('speed') || 'normal') as 'normal' | 'fast' | 'slow';
     } else {
       // 从FormData获取数据
@@ -48,7 +49,7 @@ async function handleRequest(c: any, method: string) {
       message = formData.get('message') as string;
       image = formData.get('image') as File | null;
       userId = formData.get('userId') as string;
-      conversationId = formData.get('conversationId') as string;
+      topicId = formData.get('topicId') as string;
       speed = (formData.get('speed') as string || 'normal') as 'normal' | 'fast' | 'slow';
     }
 
@@ -94,11 +95,35 @@ async function handleRequest(c: any, method: string) {
     let userMessageId: string | undefined;
     if (userId && db) {
       try {
-        const savedMessage = await createChatMessage({
-          userId,
-          role: 'user',
+        // 检查topicId是否存在，如果不存在则创建新话题
+        if (topicId) {
+          const topic = await getTopicById(topicId);
+          if (!topic || topic.user_id !== userId) {
+            // 如果话题不存在或不属于当前用户，则创建新话题
+            const newTopic = await createTopic(
+              userId,
+              message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+              'Created from chat'
+            );
+            topicId = newTopic.id;
+          }
+        } else {
+          // 创建新话题，使用消息内容前50个字符作为标题
+          const topic = await createTopic(
+            userId,
+            message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+            'Created from chat'
+          );
+          topicId = topic.id;
+        }
+
+        // 保存用户消息
+        const savedMessage = await createMessage({
+          topicId,
+          role: 'user' as MessageRole,
           content: message,
-          parentId: conversationId || undefined
+          userId,
+          created_at: new Date().toISOString()
         });
         userMessageId = savedMessage?.id;
       } catch (dbError) {
@@ -194,14 +219,20 @@ async function handleRequest(c: any, method: string) {
             }
 
             // 存储完整响应到数据库
-            if (userId && userMessageId && fullResponse) {
+            if (userId && userMessageId && topicId && fullResponse) {
               try {
-                await createChatMessage({
-                  userId,
-                  role: 'assistant',
+                const savedAiMessage = await createMessage({
+                  topicId,
+                  role: 'assistant' as MessageRole,
                   content: fullResponse,
-                  parentId: userMessageId
+                  userId,
+                  created_at: new Date().toISOString()
                 });
+
+                // 发送AI消息ID
+                if (savedAiMessage?.id) {
+                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ messageId: savedAiMessage.id })}\n\n`));
+                }
               } catch (dbError) {
                 console.error('Error saving AI response to database:', dbError);
               }
@@ -226,23 +257,17 @@ async function handleRequest(c: any, method: string) {
         }
       });
     } catch (error) {
-      console.error('Error from DashScope:', error);
-
-      // 根据错误提供更具体的错误消息
-      const errorMessage = error instanceof Error
-        ? error.message
-        : 'Unknown error occurred while communicating with AI model';
-
+      console.error('API error:', error);
       return c.json({
-        error: 'Failed to get response from AI model',
-        details: errorMessage
+        error: 'An error occurred while processing your request',
+        details: error instanceof Error ? error.message : String(error)
       }, 500);
     }
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error('Request handler error:', error);
     return c.json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'An error occurred while processing your request',
+      details: error instanceof Error ? error.message : String(error)
     }, 500);
   }
 }
@@ -255,6 +280,9 @@ app.onError((err, c) => {
     details: err instanceof Error ? err.message : 'Unknown error'
   }, 500);
 });
+
+// 由于agent API使用了Hono并返回Response对象而不是NextResponse，
+// 不能直接使用withDebounce函数。对于这种情况，我们保持原来的代码不变。
 
 export async function POST(req: Request) {
   return app.fetch(req);

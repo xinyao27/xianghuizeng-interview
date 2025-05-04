@@ -1,6 +1,6 @@
 import React, { PropsWithChildren, useEffect, useState } from 'react';
 
-import { AppProviderContext, Message } from './AppContext';
+import { AppProviderContext, Conversation, Message } from './AppContext';
 import { getCookie, setCookie } from './utils';
 
 const USERNAME_COOKIE_KEY = 'chat_username';
@@ -9,6 +9,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [username, setUsername] = useState<string>('');
   const [conversation, setConversation] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
 
   useEffect(() => {
     // Load username from cookie on mount
@@ -29,7 +30,9 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     conversation,
     setConversation,
     messages,
-    setMessages
+    setMessages,
+    currentConversation,
+    setCurrentConversation
   };
 
   return <AppProviderContext.Provider value={contextValue}>{children}</AppProviderContext.Provider>;

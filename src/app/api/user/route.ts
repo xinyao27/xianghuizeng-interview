@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 
 import { createUser, getUserByUsername } from '@/db/operations';
+import { withDebounce } from '@/lib/debounce';
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const { username } = await request.json();
     if (!username) {
@@ -20,11 +21,10 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const username = searchParams.get('username');
-
     if (!username) {
       return NextResponse.json({ error: 'Username is required' }, { status: 400 });
     }
@@ -42,4 +42,8 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-} 
+}
+
+// 导出添加防抖的处理函数
+export const POST = withDebounce(handlePOST);
+export const GET = withDebounce(handleGET); 

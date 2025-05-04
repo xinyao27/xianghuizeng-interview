@@ -10,48 +10,72 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useUser } from '@/lib/UserContext';
 
 interface UsernameDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (username: string) => void;
-  title?: string;
-  description?: string;
-  defaultUsername?: string;
 }
 
 export function UsernameDialog({
   isOpen,
   onOpenChange,
-  onSubmit,
-  title = 'Enter Your Username',
-  description = 'Please enter a username to continue.',
-  defaultUsername = '',
 }: UsernameDialogProps) {
-  const [username, setUsername] = useState(defaultUsername);
+  const { login, user } = useUser();
+  const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setUsername(defaultUsername);
-      setError('');
+    if (user) {
+      setUsername(user.username);
     }
-  }, [isOpen, defaultUsername]);
+  }, [user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const checkUsernameExists = async (username: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/user/check?username=${encodeURIComponent(username)}`);
+      if (!response.ok) {
+        throw new Error('Failed to check username');
+      }
+      const data = await response.json();
+      return data.exists;
+    } catch (error) {
+      console.error('Error checking username:', error);
+      throw error;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedUsername = username.trim();
+
     if (!trimmedUsername) {
-      setError('Username cannot be empty');
+      setError('Name cannot be empty');
       return;
     }
-    if (trimmedUsername === defaultUsername) {
-      onOpenChange(false);
-      return;
-    }
+
+    setIsLoading(true);
     setError('');
-    onSubmit(trimmedUsername);
-    onOpenChange(false);
+
+    try {
+      // Check if username is taken (if it's not the current user's username)
+      if (trimmedUsername !== user?.username) {
+        const usernameExists = await checkUsernameExists(trimmedUsername);
+        if (usernameExists) {
+          setError('Name is already taken');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      await login(trimmedUsername);
+      onOpenChange(false);
+    } catch (err) {
+      setError('Failed to update name. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -59,20 +83,27 @@ export function UsernameDialog({
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
+            <DialogTitle>
+              {user ? 'Update Your Name' : 'Enter Your Name'}
+            </DialogTitle>
+            <DialogDescription>
+              {user
+                ? 'Change your name below.'
+                : 'Please enter a name to continue.'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Input
                 id="username"
-                placeholder="Enter username"
+                placeholder="Enter name"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 className={error ? 'border-red-500' : ''}
                 autoComplete="off"
                 autoFocus
+                disabled={isLoading}
               />
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
@@ -82,11 +113,12 @@ export function UsernameDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isLoading}
             >
               Cancel
             </Button>
-            <Button type="submit">
-              {defaultUsername ? 'Update' : 'Continue'}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Loading...' : (user ? 'Update' : 'Continue')}
             </Button>
           </DialogFooter>
         </form>

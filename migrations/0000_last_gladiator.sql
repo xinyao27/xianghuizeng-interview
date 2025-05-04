@@ -1,25 +1,44 @@
-CREATE TABLE "chat_history" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" uuid NOT NULL,
-	"role" text NOT NULL,
-	"content" text NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"parent_id" uuid
+-- Drop existing tables if they exist
+DROP TABLE IF EXISTS "chat_history";
+DROP TABLE IF EXISTS "conversations";
+DROP TABLE IF EXISTS "messages";
+DROP TABLE IF EXISTS "topics";
+DROP TABLE IF EXISTS "users";
+
+-- Create the users table
+CREATE TABLE IF NOT EXISTS "users" (
+	"id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	"username" TEXT UNIQUE NOT NULL,
+	"created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
+	"updated_at" TIMESTAMP NOT NULL DEFAULT NOW()
 );
---> statement-breakpoint
-CREATE TABLE "todo" (
-	"id" integer PRIMARY KEY NOT NULL,
-	"text" text NOT NULL,
-	"done" boolean DEFAULT false NOT NULL
+
+-- Create the topics table
+CREATE TABLE IF NOT EXISTS "topics" (
+	"id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	"user_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+	"title" TEXT NOT NULL,
+	"description" TEXT,
+	"created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
+	"updated_at" TIMESTAMP NOT NULL DEFAULT NOW(),
+	"last_message_at" TIMESTAMP NOT NULL DEFAULT NOW()
 );
---> statement-breakpoint
-CREATE TABLE "users" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"username" text NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "users_username_unique" UNIQUE("username")
+
+-- Create the messages table
+CREATE TABLE IF NOT EXISTS "messages" (
+	"id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	"topic_id" UUID NOT NULL REFERENCES "topics"("id") ON DELETE CASCADE,
+	"user_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+	"content" TEXT NOT NULL,
+	"role" TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+	"created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
+	"metadata" TEXT
 );
---> statement-breakpoint
-ALTER TABLE "chat_history" ADD CONSTRAINT "chat_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "chat_history" ADD CONSTRAINT "chat_history_parent_id_chat_history_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."chat_history"("id") ON DELETE no action ON UPDATE no action;
+
+-- Create indexes for efficient queries
+CREATE INDEX IF NOT EXISTS "topics_user_id_idx" ON "topics"("user_id");
+CREATE INDEX IF NOT EXISTS "topics_last_message_at_idx" ON "topics"("last_message_at");
+CREATE INDEX IF NOT EXISTS "messages_topic_id_idx" ON "messages"("topic_id");
+CREATE INDEX IF NOT EXISTS "messages_user_id_idx" ON "messages"("user_id");
+CREATE INDEX IF NOT EXISTS "messages_role_idx" ON "messages"("role");
+CREATE INDEX IF NOT EXISTS "messages_created_at_idx" ON "messages"("created_at");
