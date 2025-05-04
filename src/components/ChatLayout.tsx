@@ -8,8 +8,10 @@ export function ChatLayout() {
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
 
   return (
-    <div className="flex flex-col flex-1 justify-center">
-      <ChatWindow isWaitingForResponse={isWaitingForResponse} />
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto">
+        <ChatWindow isWaitingForResponse={isWaitingForResponse} />
+      </div>
       <ChatInput setIsWaitingForResponse={setIsWaitingForResponse} />
     </div>
   );

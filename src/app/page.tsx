@@ -29,9 +29,13 @@ export default function Home() {
         <SidebarProvider open={open} onOpenChange={onOpenChange}>
           <div className="flex h-screen w-screen">
             <AppSidebar openSidebar={open} onOpenChangeSidebar={onOpenChange} />
-            <main className="flex-1 p-3 flex flex-col">
-              <Navber openSidebar={open} onOpenChangeSidebar={onOpenChange} />
-              <ChatLayout />
+            <main className="flex-1 flex flex-col h-full overflow-hidden">
+              <div className="p-3 border-b">
+                <Navber openSidebar={open} onOpenChangeSidebar={onOpenChange} />
+              </div>
+              <div className="flex-1 overflow-hidden p-3">
+                <ChatLayout />
+              </div>
             </main>
           </div>
         </SidebarProvider>
