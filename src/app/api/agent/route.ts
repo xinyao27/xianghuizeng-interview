@@ -1,15 +1,10 @@
-import { LanguageModelV1, streamText } from 'ai';
+import { LanguageModelV1, Message, streamText } from 'ai';
 import { Hono } from 'hono';
 import { createQwen } from 'qwen-ai-provider';
 
 import { db } from '@/db/drizzle';
-import { createMessage, createTopic, getTopicById } from '@/db/operations';
+import { createMessage, getTopicById } from '@/db/operations';
 import type { MessageRole } from '@/db/schema';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
 
 // 初始化Qwen模型
 const qwen = createQwen({
@@ -97,43 +92,38 @@ async function handleRequest(c: any, method: string) {
     }
 
     // 如果提供了userId，则将用户消息保存到数据库
-    let userMessageId: string | undefined;
     if (userId && db) {
       try {
-        // 检查topicId是否存在，如果不存在则创建新话题
+        // 检查topicId是否存在
         if (topicId) {
+          // 只验证话题是否存在及所有权，不再创建新话题
           const topic = await getTopicById(topicId);
-          if (!topic || topic.user_id !== userId) {
-            // 如果话题不存在或不属于当前用户，则创建新话题
-            const newTopic = await createTopic(
-              userId,
-              message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-              'Created from chat'
-            );
-            topicId = newTopic.id;
+          if (!topic) {
+            console.log(`Topic not found: ${topicId}, will create messages without topic`);
+          } else if (topic.user_id !== userId) {
+            console.log(`Topic ${topicId} does not belong to user ${userId}, will create messages without topic`);
+            topicId = undefined;
           }
-        } else {
-          // 创建新话题，使用消息内容前50个字符作为标题
-          const topic = await createTopic(
-            userId,
-            message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-            'Created from chat'
-          );
-          topicId = topic.id;
+        }
+        // 移除这里的创建新话题逻辑，仅当没有提供topicId时记录日志
+        else {
+          console.log('No topicId provided, messages will be created without topic association');
         }
 
-        // 保存用户消息
-        const savedMessage = await createMessage({
-          topicId,
-          role: 'user' as MessageRole,
-          content: message,
-          userId,
-          created_at: new Date().toISOString()
-        });
-        userMessageId = savedMessage?.id;
+        // 只有在有效的topicId时才保存用户消息
+        if (topicId) {
+          const savedMessage = await createMessage({
+            topicId,
+            role: 'user' as MessageRole,
+            content: message,
+            userId,
+            created_at: new Date().toISOString()
+          });
+          console.log(`User message saved with ID: ${savedMessage?.id}`);
+        }
       } catch (dbError) {
-        console.error('Error saving user message to database:', dbError);
-        // 即使数据库保存失败，也继续执行
+        console.error('Error processing database operations:', dbError);
+        // 即使数据库操作失败，也继续执行
       }
     }
 
@@ -148,12 +138,7 @@ async function handleRequest(c: any, method: string) {
             // 调用AI模型获取流式响应
             const userMessage: Message = {
               role: 'user',
-              content: contentParts.map(part => {
-                if (part.type === 'text') {
-                  return part.text || '';
-                }
-                return '';
-              }).join('')
+              content: contentParts
             };
 
             const modelStream = await streamText({
@@ -229,19 +214,25 @@ async function handleRequest(c: any, method: string) {
             }
 
             // 存储完整响应到数据库
-            if (userId && userMessageId && topicId && fullResponse) {
+            if (userId && topicId && fullResponse) {
               try {
-                const savedAiMessage = await createMessage({
-                  topicId,
-                  role: 'assistant' as MessageRole,
-                  content: fullResponse,
-                  userId,
-                  created_at: new Date().toISOString()
-                });
+                // 确保topicId有效再保存AI响应
+                const topic = await getTopicById(topicId);
+                if (topic && topic.user_id === userId) {
+                  const savedAiMessage = await createMessage({
+                    topicId,
+                    role: 'assistant' as MessageRole,
+                    content: fullResponse,
+                    userId,
+                    created_at: new Date().toISOString()
+                  });
 
-                // 发送AI消息ID
-                if (savedAiMessage?.id) {
-                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ messageId: savedAiMessage.id })}\n\n`));
+                  // 发送AI消息ID
+                  if (savedAiMessage?.id) {
+                    controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ messageId: savedAiMessage.id })}\n\n`));
+                  }
+                } else {
+                  console.log(`Not saving AI response: Topic ${topicId} invalid or doesn't belong to user ${userId}`);
                 }
               } catch (dbError) {
                 console.error('Error saving AI response to database:', dbError);

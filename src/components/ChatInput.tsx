@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from "@/hooks/use-toast";
+import { UsernameDialog } from '@/components/UsernameDialog';
 import { useAppProvider } from '@/hooks/useAppProvider';
 import { Message } from '@/lib/AppContext';
 import { debounce } from '@/lib/debounce';
@@ -20,17 +20,53 @@ type ChatInputProps = {
 
 export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
   const [input, setInput] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string>('');
   const [typingSpeed] = useState<'normal' | 'fast' | 'slow'>('slow');
+  const [hasCreatedTopic, setHasCreatedTopic] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { toast } = useToast()
   const { conversation, setConversation, messages, setMessages, currentConversation } = useAppProvider();
   const { user } = useUser();
+  // 使用useRef存储防抖函数，确保它在组件生命周期内保持不变
+  const updateTitleRef = useRef<(args: { topicId: string, title: string, userId?: string }) => void>();
+
+  // 初始化防抖函数
+  useEffect(() => {
+    // 创建更新标题的防抖函数
+    updateTitleRef.current = debounce(async (args: { topicId: string, title: string, userId?: string }) => {
+      try {
+        const { topicId, title, userId } = args;
+
+        const titleResponse = await fetch('/api/conversations', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            topicId,
+            title,
+            userId,
+          }),
+        });
+
+        if (!titleResponse.ok) {
+          console.error('Failed to update conversation title');
+        }
+
+        // 在AI回复完成后统一刷新侧边栏
+        if (typeof window !== 'undefined' && window._sidebarFunctions?.getConversationList) {
+          window._sidebarFunctions.getConversationList();
+        }
+      } catch (error) {
+        console.error('Error updating conversation title:', error);
+      }
+    }, 500);
+  }, []);
 
   // Create a new conversation ID if one doesn't exist
   useEffect(() => {
@@ -122,10 +158,7 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
 
   const handleSubmit = async () => {
     if (!user?.username) {
-      toast({
-        title: "Please enter a username",
-        description: "Please enter a username to continue",
-      })
+      setDialogOpen(true);
       return;
     }
     if (!input.trim() && !selectedImage) return;
@@ -172,13 +205,10 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
     let topicId = '';
     if (currentConversation?.id) {
       topicId = currentConversation.id;
-      formData.append('conversationId', currentConversation.id);
-    } else if (conversationId) {
-      // 检查是否有历史消息
-      const hasExistingMessages = messages.length > 0;
-
-      // Create a new conversation in the database first if no currentConversation
+      formData.append('topicId', currentConversation.id);
+    } else if (conversationId && !hasCreatedTopic) {
       try {
+        // 只在没有currentConversation且未创建过话题时创建新对话
         const response = await fetch('/api/conversations', {
           method: 'POST',
           headers: {
@@ -187,26 +217,28 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
           body: JSON.stringify({
             userId: user?.id,
             title: input.slice(0, 30) + (input.length > 30 ? '...' : ''),
+            description: 'Created from chat'
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
           topicId = data.id;
-          formData.append('conversationId', data.id);
+          formData.append('topicId', data.id);
           // Update local conversation ID
           setConversationId(data.id);
-
-          // 只有在没有历史消息时才刷新侧边栏列表，避免重复刷新
-          if (typeof window !== 'undefined' && window._sidebarFunctions?.getConversationList && !hasExistingMessages) {
-            window._sidebarFunctions.getConversationList();
-          }
+          // 标记已创建话题，避免重复创建
+          setHasCreatedTopic(true);
         } else {
           console.error('Failed to create conversation');
         }
       } catch (error) {
         console.error('Error creating conversation:', error);
       }
+    } else if (conversationId) {
+      // 已经创建过话题，直接使用现有ID
+      topicId = conversationId;
+      formData.append('topicId', conversationId);
     }
 
     // 直接保存用户消息到数据库
@@ -402,35 +434,17 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
         }
       }
 
-      // After the conversation is completed, update the conversation title if it's new
-      if (topicId && !currentConversation?.id) {
+      // After the conversation is completed, update the conversation title if needed
+      if (topicId && !currentConversation?.id && accumulatedResponse) {
         try {
-          // 使用防抖更新会话标题
-          const updateConversationTitle = debounce(async () => {
-            // Generate a better title from the first message
-            const titleResponse = await fetch('/api/conversations', {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                topicId: topicId,
-                title: input.length > 30 ? input.slice(0, 27) + '...' : input,
-                userId: user?.id,
-              }),
+          // 使用防抖更新会话标题，只在AI回复后更新一次
+          if (updateTitleRef.current) {
+            updateTitleRef.current({
+              topicId,
+              title: input.length > 30 ? input.slice(0, 27) + '...' : input,
+              userId: user?.id,
             });
-
-            if (!titleResponse.ok) {
-              console.error('Failed to update conversation title');
-            }
-
-            // 刷新会话列表（带防抖），并且只在没有历史消息时刷新
-            if (typeof window !== 'undefined' && window._sidebarFunctions?.getConversationList && messages.length <= 2) {
-              window._sidebarFunctions.getConversationList();
-            }
-          }, 300);
-
-          updateConversationTitle();
+          }
         } catch (error) {
           console.error('Error updating conversation title:', error);
         }
@@ -495,6 +509,18 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
       imageInputRef.current.value = '';
     }
   };
+
+  // 当创建新对话或切换对话时重置状态
+  const resetTopicState = () => {
+    if (!currentConversation) {
+      setHasCreatedTopic(false);
+    }
+  };
+
+  // 当currentConversation变化时，重置hasCreatedTopic状态
+  useEffect(() => {
+    resetTopicState();
+  }, [currentConversation]);
 
   return (
     <div className="p-6 pb-6">
@@ -589,6 +615,10 @@ export function ChatInput({ setIsWaitingForResponse }: ChatInputProps) {
           </div>
         </div>
       </div>
+      <UsernameDialog
+        isOpen={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }
