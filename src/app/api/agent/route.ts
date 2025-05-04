@@ -15,7 +15,7 @@ const qwen = createQwen({
     'Authorization': `Bearer ${process.env.DASH_SCOPE_API_KEY}`
   }
 });
-const model = qwen('qwen-plus');
+const model = qwen('qwen-vl-max');
 
 const app = new Hono();
 
