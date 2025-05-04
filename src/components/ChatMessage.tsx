@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, ZoomIn } from 'lucide-react';
+import { Bot, Copy, ZoomIn } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -19,6 +19,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
   // Track if this is a new message to apply animation
   const [isNew, setIsNew] = useState(true);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Remove the "new" status after animation completes
   useEffect(() => {
@@ -29,11 +30,19 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Copy message content to clipboard
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(content).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
+  };
+
   if (isUser) {
     // User message - right aligned with background color
     return (
       <div className="flex justify-end p-4 w-full w-[800px] mx-auto">
-        <div className="bg-primary/10 rounded-lg rounded-tr-none p-3 max-w-[80%]">
+        <div className="bg-primary/10 rounded-lg rounded-tr-none p-3 max-w-[80%] relative group">
           {imageUrl && (
             <div className="mb-2">
               <div
@@ -54,6 +63,18 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
             </div>
           )}
           <div className="text-sm whitespace-pre-wrap">{content}</div>
+
+          {/* Copy button at the bottom */}
+          {!isUser ? <div className="flex justify-end mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={copyToClipboard}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              aria-label="Copy message"
+            >
+              <Copy size={12} className={cn(isCopied ? "text-green-500" : "")} />
+              <span>{isCopied ? "已复制" : "复制"}</span>
+            </button>
+          </div> : null}
         </div>
       </div>
     );
@@ -68,7 +89,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
         <Bot size={16} />
       </div>
 
-      <div className="max-w-[80%] overflow-hidden">
+      <div className="max-w-[80%] overflow-hidden relative group">
         <div className="prose prose-sm dark:prose-invert overflow-visible">
           <div className={cn(
             isNew && "animate-typewriter origin-left",
@@ -124,6 +145,18 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
               {processMarkdown(content)}
             </ReactMarkdown>
           </div>
+        </div>
+
+        {/* Copy button for AI messages at the bottom */}
+        <div className="flex mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={copyToClipboard}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            aria-label="Copy message"
+          >
+            <Copy size={12} className={cn(isCopied ? "text-green-500" : "")} />
+            <span>{isCopied ? "已复制" : "复制"}</span>
+          </button>
         </div>
       </div>
 
