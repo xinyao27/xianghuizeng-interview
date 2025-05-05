@@ -4,9 +4,18 @@ import { Bot, Copy, ZoomIn } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 
 type MessageProps = {
@@ -20,6 +29,7 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
   const [isNew, setIsNew] = useState(true);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const { toast } = useToast()
 
   // Remove the "new" status after animation completes
   useEffect(() => {
@@ -31,10 +41,12 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
   }, []);
 
   // Copy message content to clipboard
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(content).then(() => {
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+  const copyToClipboard = (val: string, isSet?: boolean) => {
+    navigator.clipboard.writeText(val).then(() => {
+      if (isSet) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
     });
   };
 
@@ -67,7 +79,9 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
           {/* Copy button at the bottom */}
           {!isUser ? <div className="flex justify-end mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              onClick={copyToClipboard}
+              onClick={() => {
+                copyToClipboard(content)
+              }}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               aria-label="Copy message"
             >
@@ -88,7 +102,6 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
       <div className="h-8 w-8 shrink-0 mt-1 rounded-full bg-blue-500 text-white flex items-center justify-center">
         <Bot size={16} />
       </div>
-
       <div className="max-w-[80%] overflow-hidden relative group">
         <div className="prose prose-sm dark:prose-invert overflow-visible">
           <div className={cn(
@@ -98,14 +111,51 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks]}
               components={{
-                pre: ({ ...props }) => (
-                  <div className="overflow-auto rounded-lg bg-black/10 dark:bg-white/10 p-4 my-2">
-                    <pre {...props} />
+                pre: ({ ...props }) => {
+                  //@ts-ignore
+                  const className = props?.children?.props?.className || ''
+                  const match = /language-(\w+)/.exec(className || '');
+                  return <div className="overflow-auto rounded-lg px-4 pt-4 my-4 bg-[rgb(45,45,45)] text-[#a2a9b0]">
+                    {match ? <div className='px-3 pb-3 border-b flex justify-between'>
+                      <span>{match[1]}</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger onClick={() => {
+                            //@ts-ignore
+                            copyToClipboard(props?.children?.props?.children)
+                            toast({
+                              description: "Copy code success!",
+                            })
+                          }}>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Copy size={12} className={cn(isCopied ? "text-green-500" : "")} />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>copy the code</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div> : null}
+                    <pre className="rounded-lg" {...props} />
                   </div>
-                ),
-                code: ({ ...props }) => (
-                  <code className="rounded bg-black/10 dark:bg-white/10 px-1 py-0.5" {...props} />
-                ),
+                },
+                code: ({ className, children }) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return match ? (
+                    <SyntaxHighlighter
+                      style={tomorrow}
+                      language={match[1]}
+                      PreTag="div"
+                    >
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className={className}>
+                      {children}
+                    </code>
+                  );
+                },
                 p: ({ ...props }) => (
                   <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />
                 ),
@@ -150,7 +200,9 @@ export function ChatMessage({ content, isUser, imageUrl }: MessageProps) {
         {/* Copy button for AI messages at the bottom */}
         <div className="flex mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={copyToClipboard}
+            onClick={() => {
+              copyToClipboard(content)
+            }}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             aria-label="Copy message"
           >

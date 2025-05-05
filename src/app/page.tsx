@@ -5,9 +5,9 @@ import { ChatLayout } from '@/components/ChatLayout';
 import { Navber } from '@/components/Navber';
 import { AppSidebar } from '@/components/Sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { Toaster } from "@/components/ui/toaster";
 import { AppProvider } from '@/lib/AppProvider';
 import { UserProvider } from '@/lib/UserContext';
-
 export default function Home() {
   const [open, setOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -32,6 +32,7 @@ export default function Home() {
             <main className="flex-1 flex flex-col overflow-hidden">
               <Navber openSidebar={open} onOpenChangeSidebar={onOpenChange} />
               <ChatLayout />
+              <Toaster />
             </main>
           </div>
         </SidebarProvider>

@@ -67,7 +67,7 @@ importers:
         version: 16.5.0
       drizzle-orm:
         specifier: ^0.43.1
-        version: 0.43.1(@neondatabase/serverless@1.0.0)(@opentelemetry/api@1.9.0)(@types/pg@8.11.14)
+        version: 0.43.1(@neondatabase/serverless@1.0.0)(@opentelemetry/api@1.9.0)(@types/pg@8.11.14)(pg@8.15.6)
       hono:
         specifier: ^4.7.8
         version: 4.7.8
@@ -5770,11 +5770,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.43.1(@neondatabase/serverless@1.0.0)(@opentelemetry/api@1.9.0)(@types/pg@8.11.14):
+  drizzle-orm@0.43.1(@neondatabase/serverless@1.0.0)(@opentelemetry/api@1.9.0)(@types/pg@8.11.14)(pg@8.15.6):
     optionalDependencies:
       '@neondatabase/serverless': 1.0.0
       '@opentelemetry/api': 1.9.0
       '@types/pg': 8.11.14
+      pg: 8.15.6
 
   dunder-proto@1.0.1:
     dependencies:
