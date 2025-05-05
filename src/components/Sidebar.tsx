@@ -182,7 +182,6 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
     setIsDeleteDialogOpen(true);
   };
 
-  // 确认删除会话的函数
   const confirmDelete = async () => {
     if (!user || !conversationToDelete) return;
 
@@ -339,7 +338,7 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
         <Sidebar>
           <SidebarHeader className="p-3 border-b">
             <div className="flex justify-between items-center">
-              <span className="font-semibold">AI-Chat</span>
+              <a className="font-semibold cursor-pointer" onClick={handleNewChat}>AI-Chat</a>
               <Button variant="ghost" size="icon" onClick={() => onOpenChangeSidebar(false)} className="h-8 w-8 hover:bg-muted">
                 <PanelLeft className="h-4 w-4" />
               </Button>
@@ -366,7 +365,7 @@ export function AppSidebar({ openSidebar: _openSidebar, onOpenChangeSidebar }: S
                     onClick={() => handleSelectConversation(item.id)}
                   >
                     <div className="flex flex-col items-start gap-1 w-full">
-                      <span className="truncate font-medium w-full text-left">{item.title}</span>
+                      <span className="truncate font-medium w-[70%] text-left">{item.title}</span>
                       <span className="text-xs text-muted-foreground">{formatDate(item.updated_at)}</span>
                     </div>
                   </Button>
