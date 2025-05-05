@@ -95,7 +95,7 @@
     ],
     "max-lines": [
       "warn",
-      300
+      500
     ],
     "max-nested-callbacks": [
       "warn",
