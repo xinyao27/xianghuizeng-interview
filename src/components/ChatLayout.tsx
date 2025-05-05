@@ -13,7 +13,7 @@ export function ChatLayout() {
     <div className="flex flex-col flex-1 justify-center p-3  overflow-hidden">
       <ChatWindow isWaitingForResponse={isWaitingForResponse} />
       <ChatInput setIsWaitingForResponse={setIsWaitingForResponse} />
-      {messages.length === 0 ? <div className='h-80' /> : null}
+      {messages.length === 0 ? <div className='h-[30%]' /> : null}
     </div>
   );
 }
