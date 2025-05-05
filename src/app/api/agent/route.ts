@@ -150,14 +150,15 @@ async function handleRequest(c: any, method: string) {
           try {
             let fullResponse = '';
 
-            const userMessage: any = {
+            // 使用类型断言创建消息
+            const messages = [{
               role: 'user',
               content: contentParts
-            };
+            }] as any;
 
             const modelStream = await streamText({
               model: model as LanguageModelV1,
-              messages: [userMessage],
+              messages,
               temperature: 0.7,
               maxTokens: 1000,
             });
