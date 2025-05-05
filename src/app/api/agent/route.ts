@@ -1,4 +1,4 @@
-import { LanguageModelV1, Message, streamText } from 'ai';
+import { LanguageModelV1, streamText } from 'ai';
 import { Hono } from 'hono';
 import { createQwen } from 'qwen-ai-provider';
 
@@ -150,8 +150,7 @@ async function handleRequest(c: any, method: string) {
           try {
             let fullResponse = '';
 
-            // 调用AI模型获取流式响应
-            const userMessage: Message = {
+            const userMessage: any = {
               role: 'user',
               content: contentParts
             };
